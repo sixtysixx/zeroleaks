@@ -1,0 +1,76 @@
+{
+  "name": "zeroleaks",
+  "version": "1.0.0",
+  "description": "AI Security Scanner - Test your AI systems for prompt injection and extraction vulnerabilities",
+  "author": "ZeroLeaks <hello@zeroleaks.ai>",
+  "license": "BSL-1.1",
+  "homepage": "https://zeroleaks.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZeroLeaks/zeroleaks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZeroLeaks/zeroleaks/issues"
+  },
+  "keywords": [
+    "ai",
+    "security",
+    "llm",
+    "prompt-injection",
+    "jailbreak",
+    "red-team",
+    "penetration-testing",
+    "openai",
+    "anthropic",
+    "claude",
+    "gpt"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "zeroleaks": "./dist/bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./agents": {
+      "import": "./dist/agents/index.js",
+      "types": "./dist/agents/index.d.ts"
+    },
+    "./probes": {
+      "import": "./dist/probes/index.js",
+      "types": "./dist/probes/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/bin/cli.ts --outdir ./dist/bin --target node && tsc --emitDeclarationOnly",
+    "dev": "bun run --watch src/bin/cli.ts",
+    "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^0.4.3",
+    "ai": "^4.3.15",
+    "commander": "^13.1.0",
+    "js-tiktoken": "^1.0.18",
+    "ora": "^8.2.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.2.4",
+    "@types/node": "^22.14.1",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
