@@ -1,6 +1,6 @@
 # ZeroLeaks
 
-An autonomous AI security scanner that tests LLM systems for prompt injection vulnerabilities using state-of-the-art attack techniques.
+An autonomous AI security scanner that tests LLM systems for prompt injection vulnerabilities using attack techniques.
 
 ## Features
 
