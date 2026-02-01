@@ -265,7 +265,6 @@ export class ScanEngine {
           const nextPrompt = this.orchestrator.getNextPrompt(
             this.conversationHistory,
             inspectorGuidance,
-            inspectorGuidance,
           );
 
           if (nextPrompt) {
