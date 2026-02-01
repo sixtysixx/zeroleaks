@@ -19,10 +19,26 @@ program
   .option("-p, --prompt <prompt>", "The system prompt to test")
   .option("-f, --file <file>", "Path to file containing the system prompt")
   .option("-t, --turns <number>", "Maximum number of attack turns", "15")
-  .option("-d, --duration <ms>", "Maximum duration in milliseconds", "240000")
+  .option(
+    "-d, --duration <ms>",
+    "Maximum duration in milliseconds (0 = no limit)",
+    "0",
+  )
   .option(
     "--api-key <key>",
     "OpenRouter API key (or set OPENROUTER_API_KEY env var)",
+  )
+  .option(
+    "--attacker-model <model>",
+    "Model for attacker agent (default: anthropic/claude-sonnet-4)",
+  )
+  .option(
+    "--target-model <model>",
+    "Model to test/attack (default: openai/gpt-4o-mini)",
+  )
+  .option(
+    "--evaluator-model <model>",
+    "Model for evaluator agent (default: anthropic/claude-sonnet-4)",
   )
   .option("--json", "Output results as JSON")
   .action(async (options) => {
@@ -55,6 +71,9 @@ program
         maxTurns: parseInt(options.turns),
         maxDurationMs: parseInt(options.duration),
         apiKey,
+        attackerModel: options.attackerModel,
+        targetModel: options.targetModel,
+        evaluatorModel: options.evaluatorModel,
         onProgress: async (turn, max) => {
           spinner.text = `Scanning... Turn ${turn}/${max}`;
         },
