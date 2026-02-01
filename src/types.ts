@@ -1,3 +1,29 @@
+export type ScanMode = "extraction" | "injection";
+
+export interface InjectionTestResult {
+  id: string;
+  testType: InjectionTestType;
+  injectedInstruction: string;
+  expectedBehavior: string;
+  actualBehavior: string;
+  success: boolean;
+  confidence: number;
+  technique: string;
+  category: AttackCategory;
+  evidence: string;
+  severity: "critical" | "high" | "medium" | "low";
+}
+
+export type InjectionTestType =
+  | "instruction_override"
+  | "behavior_modification"
+  | "policy_bypass"
+  | "role_hijack"
+  | "output_manipulation"
+  | "action_execution"
+  | "context_poisoning"
+  | "guardrail_bypass";
+
 export type AttackCategory =
   | "direct"
   | "encoding"
@@ -11,7 +37,12 @@ export type AttackCategory =
   | "semantic_shift"
   | "policy_puppetry"
   | "context_overflow"
-  | "reasoning_exploit";
+  | "reasoning_exploit"
+  | "hybrid"
+  | "tool_exploit"
+  | "siren"
+  | "echo_chamber"
+  | "injection";
 
 export type AttackPhase =
   | "reconnaissance"
@@ -171,6 +202,8 @@ export interface EvaluatorOutput {
   suggestedCategories: AttackCategory[];
   shouldContinue: boolean;
   continueReason: string;
+  shouldReset?: boolean;
+  resetReason?: string;
 }
 
 export interface MutatorOutput {
@@ -198,8 +231,24 @@ export interface ScanConfig {
   attackerModel: string;
   evaluatorModel: string;
   targetModel?: string;
+  enableVectorMemory?: boolean;
+  enableInspector?: boolean;
+  enableDefenseFingerprinting?: boolean;
+  enableParallelEvaluation?: boolean;
+  enableAdaptiveTemperature?: boolean;
+  enableMultiTurnOrchestrator?: boolean;
+  enableFailureAnalysis?: boolean;
+  orchestratorPattern?: "auto" | "siren" | "echo_chamber" | "tombRaider";
+  temperatureConfig?: Partial<TemperatureConfig>;
+  inspectorModel?: string;
+  scanMode?: ScanMode;
+  enableDualMode?: boolean;
+  injectionTestTypes?: InjectionTestType[];
   onProgress?: (state: ScanProgress) => Promise<void>;
   onFinding?: (finding: Finding) => Promise<void>;
+  onDefenseDetected?: (fingerprint: DefenseFingerprint) => Promise<void>;
+  onFailureRecorded?: (failure: FailedAttack) => Promise<void>;
+  onInjectionResult?: (result: InjectionTestResult) => Promise<void>;
 }
 
 export interface ScanProgress {
@@ -220,18 +269,27 @@ export interface ScanResult {
   leakStatus: LeakStatus;
   extractedSystemPrompt?: string;
   extractedFragments: string[];
+  injectionResults?: InjectionTestResult[];
+  injectionVulnerability?: "critical" | "high" | "medium" | "low" | "secure";
+  injectionScore?: number;
+  scanModes?: ScanMode[];
   turnsUsed: number;
   tokensUsed: number;
   treeNodesExplored: number;
   strategiesUsed: string[];
   defenseProfile: DefenseProfile;
   conversationLog: ConversationTurn[];
+  extractionConversationLog?: ConversationTurn[];
+  injectionConversationLog?: ConversationTurn[];
   attackTree?: AttackNode;
   summary: string;
   recommendations: string[];
   startTime: number;
   endTime: number;
   duration: number;
+  error?: string;
+  aborted: boolean;
+  completionReason: string;
 }
 
 export interface AttackAnalysis {
@@ -260,6 +318,237 @@ export interface AttackAnalysis {
   };
   cumulativeExtraction: string;
   progressTowardsGoal: number;
+}
+
+export interface InspectorOutput {
+  extractedKnowledge: {
+    topics: string[];
+    behaviors: string[];
+    constraints: string[];
+    capabilities: string[];
+    persona: string | null;
+  };
+  defenseFingerprint: DefenseFingerprint | null;
+  identifiedWeaknesses: {
+    weakness: string;
+    confidence: number;
+    exploitVector: AttackCategory;
+    suggestedApproach: string;
+  }[];
+  responseAnalysis: {
+    cooperativeLevel: number;
+    verbosityLevel: number;
+    consistencyScore: number;
+    emotionalTone: string;
+  };
+  strategicGuidance: {
+    recommendedCategories: AttackCategory[];
+    avoidCategories: AttackCategory[];
+    suggestedTechniques: string[];
+    escalationRecommendation: "escalate" | "maintain" | "deescalate" | "pivot";
+    reasoning: string;
+  };
+}
+
+export type KnownDefenseSystem =
+  | "azure_prompt_shield"
+  | "meta_prompt_guard"
+  | "llama_guard"
+  | "anthropic_constitutional"
+  | "openai_moderation"
+  | "google_safety"
+  | "nvidia_nemo_guardrails"
+  | "custom_guardrail"
+  | "no_defense"
+  | "unknown";
+
+export interface DefenseFingerprint {
+  system: KnownDefenseSystem;
+  confidence: number;
+  signals: {
+    signal: string;
+    weight: number;
+  }[];
+  knownBypasses: {
+    technique: string;
+    category: AttackCategory;
+    successRate: number;
+  }[];
+  variant?: string;
+  detectedAt: number;
+}
+
+export interface DefenseFingerprintDatabase {
+  systems: Record<
+    KnownDefenseSystem,
+    {
+      name: string;
+      description: string;
+      patterns: {
+        pattern: string | RegExp;
+        weight: number;
+      }[];
+      knownBypasses: {
+        technique: string;
+        category: AttackCategory;
+        successRate: number;
+      }[];
+      evasionDifficulty: number;
+    }
+  >;
+}
+
+export interface FailedAttack {
+  id: string;
+  prompt: string;
+  technique: string;
+  category: AttackCategory;
+  defenseSystem: KnownDefenseSystem;
+  defenseLevel: DefenseLevel;
+  failureReason: FailureReason;
+  targetResponse: string;
+  responsePatterns: string[];
+  timestamp: number;
+  scanId?: string;
+}
+
+export type FailureReason =
+  | "hard_refusal"
+  | "soft_refusal"
+  | "deflection"
+  | "misdirection"
+  | "partial_compliance"
+  | "guardrail_block"
+  | "context_not_primed"
+  | "technique_detected"
+  | "too_aggressive"
+  | "semantic_similarity"
+  | "unknown";
+
+export interface LearningRecord {
+  successfulPatterns: {
+    pattern: string;
+    category: AttackCategory;
+    successCount: number;
+    contexts: string[];
+  }[];
+  defensePatterns: {
+    defenseSystem: KnownDefenseSystem;
+    triggerPatterns: string[];
+    bypassPatterns: string[];
+  }[];
+  adaptations: {
+    fromTechnique: string;
+    toTechnique: string;
+    reason: string;
+    outcome: "success" | "failure" | "partial";
+    timestamp: number;
+  }[];
+}
+
+export interface MultiTurnSequence {
+  id: string;
+  name: string;
+  description: string;
+  pattern: "siren" | "echo_chamber" | "crescendo" | "tombRaider" | "custom";
+  steps: MultiTurnStep[];
+  config: {
+    minTurns: number;
+    maxTurns: number;
+    resetOnFailure: boolean;
+    adaptiveEscalation: boolean;
+  };
+  expectedSuccessRate: number;
+  targetDefenseLevels: DefenseLevel[];
+}
+
+export interface MultiTurnStep {
+  order: number;
+  purpose: string;
+  category: AttackCategory;
+  template: string;
+  variables: string[];
+  requiresPreviousSuccess: boolean;
+  skipCondition?: string;
+  expectedResponseType: "cooperative" | "neutral" | "resistant" | "any";
+  successIndicators: string[];
+  failureIndicators: string[];
+}
+
+export interface OrchestratorState {
+  currentSequence: MultiTurnSequence | null;
+  currentStep: number;
+  stepResults: {
+    step: number;
+    success: boolean;
+    extractedInfo: string[];
+    defenseObserved: string[];
+  }[];
+  temperatureSchedule: number[];
+  currentTemperature: number;
+  consecutiveFailures: number;
+  shouldEscalate: boolean;
+}
+
+export interface TemperatureConfig {
+  initialTemperature: number;
+  minTemperature: number;
+  maxTemperature: number;
+  successDecrement: number;
+  failureIncrement: number;
+  plateauIncrement: number;
+  plateauThreshold: number;
+  resetThreshold: number;
+}
+
+export interface TemperatureState {
+  current: number;
+  history: number[];
+  adjustments: {
+    turn: number;
+    from: number;
+    to: number;
+    reason: string;
+  }[];
+}
+
+export interface ParallelEvaluationResult {
+  variations: {
+    prompt: string;
+    response: string;
+    evaluationScore: number;
+    leakStatus: LeakStatus;
+    extractedContent?: string;
+  }[];
+  best: {
+    index: number;
+    prompt: string;
+    response: string;
+    score: number;
+  };
+  statistics: {
+    averageScore: number;
+    maxScore: number;
+    minScore: number;
+    leakRate: number;
+  };
+}
+
+export interface GarakProbe {
+  id: string;
+  name: string;
+  description: string;
+  garakModule: string;
+  garakClass: string;
+  prompts: string[];
+  detector: {
+    type: "substring" | "regex" | "semantic" | "model";
+    patterns?: string[];
+    threshold?: number;
+  };
+  tags: string[];
+  severity: "low" | "medium" | "high" | "critical";
+  references: string[];
 }
 
 export interface Probe {

@@ -18,11 +18,38 @@ import {
 import { personaProbes } from "./personas";
 import { socialProbes } from "./social";
 import { technicalProbes } from "./technical";
+import {
+  hybridProbes,
+  getHybridProbesByType,
+  getHybridProbesForDefense,
+} from "./hybrid";
+import {
+  toolExploitProbes,
+  getToolExploitsByType,
+  getToolExploitsForDefense,
+} from "./tool-exploits";
+import {
+  garakInspiredProbes,
+  getAllGarakProbes,
+  getGarakProbesBySeverity,
+  getGarakProbesByModule,
+  convertGarakToProbe,
+} from "./garak-inspired";
+import {
+  injectionProbes,
+  getInjectionProbesByType,
+  getInjectionProbesForDefense,
+  getCrescendoSequence,
+  getProbesByResearch,
+  getAllInjectionProbesAsStandard,
+} from "./injection";
 import type {
   AttackCategory,
   DefenseLevel,
   Probe as ModernProbe,
   ProbeSequence,
+  GarakProbe,
+  InjectionTestType,
 } from "../types";
 
 export interface Probe {
@@ -48,12 +75,46 @@ export type ProbeCategory =
   | "reasoning_exploit"
   | "policy_puppetry"
   | "context_overflow"
-  | "semantic_shift";
+  | "semantic_shift"
+  | "hybrid"
+  | "tool_exploit"
+  | "garak"
+  | "injection";
 
 export function getAllProbes(): Probe[] {
   const encodingAttacks = generateEncodingAttacks();
+  const garakProbesConverted = getAllGarakProbes();
+  const injectionProbesConverted = getAllInjectionProbesAsStandard();
 
   const modernProbesLegacy: Probe[] = modernProbes.map((p) => ({
+    id: p.id,
+    category: p.category,
+    technique: p.technique,
+    prompt: p.prompt,
+  }));
+
+  const hybridProbesLegacy: Probe[] = hybridProbes.map((p) => ({
+    id: p.id,
+    category: p.category,
+    technique: p.technique,
+    prompt: p.prompt,
+  }));
+
+  const toolExploitProbesLegacy: Probe[] = toolExploitProbes.map((p) => ({
+    id: p.id,
+    category: p.category,
+    technique: p.technique,
+    prompt: p.prompt,
+  }));
+
+  const garakProbesLegacy: Probe[] = garakProbesConverted.map((p) => ({
+    id: p.id,
+    category: p.category,
+    technique: p.technique,
+    prompt: p.prompt,
+  }));
+
+  const injectionProbesLegacy: Probe[] = injectionProbesConverted.map((p) => ({
     id: p.id,
     category: p.category,
     technique: p.technique,
@@ -68,11 +129,17 @@ export function getAllProbes(): Probe[] {
     ...technicalProbes,
     ...advancedProbes,
     ...modernProbesLegacy,
+    ...hybridProbesLegacy,
+    ...toolExploitProbesLegacy,
+    ...garakProbesLegacy,
+    ...injectionProbesLegacy,
   ];
 }
 
 export function getAllExtendedProbes(): ExtendedProbe[] {
   const encodingAttacks = generateEncodingAttacks();
+  const garakProbesConverted = getAllGarakProbes();
+  const injectionProbesConverted = getAllInjectionProbesAsStandard();
 
   const legacyAsModern: ExtendedProbe[] = [
     ...directProbes,
@@ -93,7 +160,14 @@ export function getAllExtendedProbes(): ExtendedProbe[] {
     stealthiness: 5,
   }));
 
-  return [...legacyAsModern, ...modernProbes];
+  return [
+    ...legacyAsModern,
+    ...modernProbes,
+    ...hybridProbes,
+    ...toolExploitProbes,
+    ...garakProbesConverted,
+    ...injectionProbesConverted,
+  ];
 }
 
 export function getProbesByCategory(category: ProbeCategory): Probe[] {
@@ -159,6 +233,34 @@ export function getProbesByCategory(category: ProbeCategory): Probe[] {
         technique: p.technique,
         prompt: p.prompt,
       }));
+    case "hybrid":
+      return hybridProbes.map((p) => ({
+        id: p.id,
+        category: p.category,
+        technique: p.technique,
+        prompt: p.prompt,
+      }));
+    case "tool_exploit":
+      return toolExploitProbes.map((p) => ({
+        id: p.id,
+        category: p.category,
+        technique: p.technique,
+        prompt: p.prompt,
+      }));
+    case "garak":
+      return getAllGarakProbes().map((p) => ({
+        id: p.id,
+        category: p.category,
+        technique: p.technique,
+        prompt: p.prompt,
+      }));
+    case "injection":
+      return getAllInjectionProbesAsStandard().map((p) => ({
+        id: p.id,
+        category: p.category,
+        technique: p.technique,
+        prompt: p.prompt,
+      }));
     default:
       return [];
   }
@@ -167,11 +269,24 @@ export function getProbesByCategory(category: ProbeCategory): Probe[] {
 export function getExtendedProbesByCategory(
   category: AttackCategory,
 ): ExtendedProbe[] {
+  if (category === "hybrid") {
+    return hybridProbes;
+  }
+  if (category === "tool_exploit") {
+    return toolExploitProbes;
+  }
+  if (category === "injection") {
+    return getAllInjectionProbesAsStandard();
+  }
   return getModernProbesByCategory(category);
 }
 
 export function getProbesForDefense(level: DefenseLevel): ExtendedProbe[] {
-  return getProbesForDefenseLevel(level);
+  const modern = getProbesForDefenseLevel(level);
+  const hybrid = getHybridProbesForDefense(level);
+  const tool = getToolExploitsForDefense(level);
+  const injection = getInjectionProbesForDefense(level);
+  return [...modern, ...hybrid, ...tool, ...injection];
 }
 
 export function getProbeSequence(id: string): ProbeSequence | undefined {
@@ -195,6 +310,10 @@ export function getAttackSequence(length = 10): Probe[] {
     "social",
     "technical",
     "advanced",
+    "hybrid",
+    "tool_exploit",
+    "garak",
+    "injection",
   ];
 
   const sequence: Probe[] = [];
@@ -226,9 +345,35 @@ export function getProbesForPhase(
     case "soft":
       return [...directProbes, ...socialProbes];
     case "escalation":
-      return [...technicalProbes, ...personaProbes];
+      return [
+        ...technicalProbes,
+        ...personaProbes,
+        ...hybridProbes.map((p) => ({
+          id: p.id,
+          category: p.category,
+          technique: p.technique,
+          prompt: p.prompt,
+        })),
+      ];
     case "advanced":
-      return [...advancedProbes, ...generateEncodingAttacks().slice(0, 10)];
+      return [
+        ...advancedProbes,
+        ...generateEncodingAttacks().slice(0, 10),
+        ...toolExploitProbes.map((p) => ({
+          id: p.id,
+          category: p.category,
+          technique: p.technique,
+          prompt: p.prompt,
+        })),
+        ...getAllInjectionProbesAsStandard()
+          .slice(0, 10)
+          .map((p) => ({
+            id: p.id,
+            category: p.category,
+            technique: p.technique,
+            prompt: p.prompt,
+          })),
+      ];
     default:
       return getAllProbes();
   }
@@ -259,3 +404,63 @@ export {
   getProbesForDefenseLevel,
   getSequenceById,
 } from "./modern";
+
+export {
+  hybridProbes,
+  xssStyleProbes,
+  csrfStyleProbes,
+  injectionChainProbes,
+  agenticExploitProbes,
+  protocolConfusionProbes,
+  getHybridProbesByType,
+  getHybridProbesForDefense,
+} from "./hybrid";
+
+export {
+  toolExploitProbes,
+  imistProbes,
+  mcpInjectionProbes,
+  functionCallProbes,
+  authBypassProbes,
+  agentChainProbes,
+  getToolExploitsByType,
+  getToolExploitsForDefense,
+} from "./tool-exploits";
+
+export {
+  garakInspiredProbes,
+  danVariantProbes,
+  encodingBypassProbes,
+  continuationProbes,
+  promptInjectionProbes,
+  leakageProbes,
+  maliciousInstructionProbes,
+  getAllGarakProbes,
+  getGarakProbesBySeverity,
+  getGarakProbesByModule,
+  convertGarakToProbe,
+} from "./garak-inspired";
+
+export {
+  injectionProbes,
+  skeletonKeyProbes,
+  crescendoProbes as injectionCrescendoProbes,
+  echoChamberProbes,
+  manyShotProbes as injectionManyShotProbes,
+  semanticVariationProbes,
+  toolPoisoningProbes,
+  indirectInjectionProbes,
+  asciiArtProbes as injectionAsciiArtProbes,
+  promptwareProbes,
+  hybridInjectionProbes,
+  outputControlProbes,
+  roleHijackProbes,
+  getInjectionProbesByType,
+  getInjectionProbesForDefense,
+  getCrescendoSequence,
+  getProbesByResearch,
+  getAllInjectionProbesAsStandard,
+} from "./injection";
+
+export type { InjectionProbe } from "./injection";
+export type { GarakProbe };
